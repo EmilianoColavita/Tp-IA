@@ -4,70 +4,63 @@ from tensorflow.keras import layers, models
 import cv2
 import os
 
-# Ruta del directorio de las imágenes de geodas
-ruta_directorio = "/Rocas/train/Geoda"
+# Definir la ruta de las carpetas de geodas y rosa del desierto
+ruta_geodas = r"train\Geoda"
+ruta_rosa_del_desierto = r"train\Rosa del Desierto"
 height, width = 28, 28  # Tamaño deseado para las imágenes
 
-# Función para cargar imágenes de geodas
-def cargar_imagenes_geodas(ruta_directorio, height, width):
+# Función para cargar imágenes de geodas y rosa del desierto
+def cargar_imagenes(ruta_geodas, ruta_rosa_del_desierto, height, width):
     imagenes = []
     etiquetas = []
 
-    # Obtener la lista de archivos en el directorio
-    archivos = os.listdir(ruta_directorio)
-
-    for archivo in archivos:
-        # Comprobar si el archivo es una imagen
-        if archivo.endswith(".jpg") or archivo.endswith(".png"):
-            # Cargar la imagen usando OpenCV
-            imagen = cv2.imread(os.path.join(ruta_directorio, archivo), cv2.IMREAD_GRAYSCALE)
-            # Redimensionar la imagen si es necesario
+    # Cargar imágenes de geodas
+    for archivo in os.listdir(ruta_geodas):
+        ruta_imagen = os.path.join(ruta_geodas, archivo)
+        imagen = cv2.imread(ruta_imagen, cv2.IMREAD_GRAYSCALE)
+        if imagen is not None:
             imagen_redimensionada = cv2.resize(imagen, (height, width))
-            # Agregar la imagen al arreglo de imágenes
             imagenes.append(imagen_redimensionada)
-            # Agregar la etiqueta correspondiente (en este caso, todas las imágenes son de geodas, etiqueta 1)
-            etiquetas.append(1)
+            etiquetas.append(0)  # Etiqueta 0 para geodas
 
-    # Convertir las listas de imágenes y etiquetas a arreglos numpy
-    imagenes_np = np.array(imagenes)
-    etiquetas_np = np.array(etiquetas)
+    # Cargar imágenes de rosa del desierto
+    for archivo in os.listdir(ruta_rosa_del_desierto):
+        ruta_imagen = os.path.join(ruta_rosa_del_desierto, archivo)
+        imagen = cv2.imread(ruta_imagen, cv2.IMREAD_GRAYSCALE)
+        if imagen is not None:
+            imagen_redimensionada = cv2.resize(imagen, (height, width))
+            imagenes.append(imagen_redimensionada)
+            etiquetas.append(1)  # Etiqueta 1 para rosa del desierto
 
-    return imagenes_np, etiquetas_np
+    return np.array(imagenes), np.array(etiquetas)
 
-# Cargar las imágenes de geodas en un arreglo de NumPy
-X_geodes, y_geodes = cargar_imagenes_geodas(ruta_directorio, height, width)
-
-# Imprimir las formas de X_geodes e y_geodes para verificar
-print("Forma de X_geodes:", X_geodes.shape)  # Debería ser (cantidad_imágenes, height, width)
-print("Forma de y_geodes:", y_geodes.shape)  # Debería ser (cantidad_imágenes,)
+# Cargar imágenes de geodas y rosa del desierto
+X_data, y_data = cargar_imagenes(ruta_geodas, ruta_rosa_del_desierto, height, width)
 
 # Definir la arquitectura de la red neuronal
 model = models.Sequential([
-    layers.Flatten(input_shape=(height, width)),  # Capa de entrada para imágenes de geodas
+    layers.Flatten(input_shape=(height, width)),  # Capa de entrada para imágenes
     layers.Dense(128, activation='relu'),
     layers.Dense(64, activation='relu'),
-    layers.Dense(1, activation='sigmoid')  # Salida binaria para geodas
+    layers.Dense(1, activation='sigmoid')  # Salida binaria
 ])
 
 # Compilar el modelo
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-# Dividir datos en entrenamiento y validación
-X_train, X_valid = X_geodes[:50], X_geodes[50:]
-y_train, y_valid = y_geodes[:50], y_geodes[50:]
-
 # Entrenar el modelo
-history = model.fit(X_train, y_train, epochs=10, validation_data=(X_valid, y_valid))
+model.fit(X_data, y_data, epochs=10)
 
-# Hacer predicciones
-predictions = model.predict(X_valid)
-
-# Establecer un umbral de confianza
-umbral_confianza = 0.5  # Puedes ajustar este valor según la confianza deseada
-
-# Mostrar los resultados
-for prediction in predictions:
-    if prediction > umbral_confianza:
-        print("Es una Geoda. Una geoda es una cavidad rocosa, normalmente cerrada, y totalmente tapizada con cristales y otras materias minerales. No es realmente un mineral sino una composición de formaciones magmáticas, cristalinas y/o sedimentarias.")
+# Cargar la imagen específica que quieres clasificar
+ruta_imagen_a_clasificar = r"train\prueba.jpg"
+imagen_a_clasificar = cv2.imread(ruta_imagen_a_clasificar, cv2.IMREAD_GRAYSCALE)
+if imagen_a_clasificar is not None:
+    imagen_redimensionada = cv2.resize(imagen_a_clasificar, (height, width))
+    imagen_redimensionada = np.expand_dims(imagen_redimensionada, axis=0)  # Agregar dimensión de lote
+    prediccion = model.predict(imagen_redimensionada)
+    if prediccion > 0.5:
+        print("La imagen es una rosa del desierto.")
     else:
-        print("No es una Geoda.")
+        print("La imagen es una geoda.")
+else:
+    print("Error al cargar la imagen.")
